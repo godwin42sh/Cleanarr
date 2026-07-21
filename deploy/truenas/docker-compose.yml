@@ -23,8 +23,10 @@ x-postgres-env: &postgres-env
   POSTGRES_PASSWORD: cleanarr # CHANGE ME — the only place the password lives
   POSTGRES_DB: cleanarr
 
-# Host port the frontend is published on (the only place to change it).
-x-frontend-port: &frontend-port 8080 # CHANGE ME if 8080 is taken on the NAS
+# Host port the frontend is published on (the only place to change it). Use a
+# static port in the 30000–32767 range — TrueNAS app convention, and safely
+# below the ephemeral range (32768+) that would cause intermittent bind errors.
+x-frontend-port: &frontend-port 30080 # CHANGE ME if 30080 is taken on the NAS
 
 services:
   db:
@@ -56,7 +58,7 @@ services:
       SCAN_DIRS: /mnt/tank/media/Shows/.downloads,/mnt/tank/media/Movies/.downloads,/mnt/tank/media/Music/.downloads # CHANGE ME
       SCAN_DAYS: '7'
       CLEANUP_CRON: '0 4 * * *'
-      CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-8080}
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-30080}
       PORT: '3000'
     volumes:
       # Mount the media dataset read/write so the scanner can inspect files and

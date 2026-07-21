@@ -158,7 +158,7 @@ on the NAS) lives at [`deploy/truenas/docker-compose.yml`](deploy/truenas/docker
 2. Edit the values marked `CHANGE ME`: the two host dataset paths (Postgres data
    and your media dataset), the qBittorrent URL/credentials, and `SCAN_DIRS`.
 3. Keep the media **host path == container path** so `SCAN_DIRS` and the
-   qBittorrent content paths line up. Then open `http://<nas-ip>:8080`.
+   qBittorrent content paths line up. Then open `http://<nas-ip>:30080`.
 
 New releases: push a `v*` tag to rebuild the images, then re-pull on the NAS.
 

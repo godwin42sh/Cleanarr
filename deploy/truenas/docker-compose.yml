@@ -23,6 +23,9 @@ x-postgres-env: &postgres-env
   POSTGRES_PASSWORD: cleanarr # CHANGE ME — the only place the password lives
   POSTGRES_DB: cleanarr
 
+# Host port the frontend is published on (the only place to change it).
+x-frontend-port: &frontend-port 8080 # CHANGE ME if 8080 is taken on the NAS
+
 services:
   db:
     image: postgres:16-alpine
@@ -68,4 +71,5 @@ services:
     depends_on:
       - backend
     ports:
-      - '${FRONTEND_PORT:-8080}:80' # CHANGE ME if 8080 is taken on the NAS
+      - target: 80
+        published: *frontend-port

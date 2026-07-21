@@ -107,8 +107,9 @@ All configuration is via environment variables — see [`.env.example`](.env.exa
 | `SCAN_DAYS`         | `7`            | Minimum file age (days) to be eligible for cleaning.                                                                  |
 | `MEDIA_EXTENSIONS`  | built-in list  | Comma-separated media extensions (no dot).                                                                            |
 | `CLEANUP_CRON`      | `0 4 * * *`    | Cron expression for the periodic scan-only job.                                                                       |
-| `CORS_ORIGINS`      | localhost:5173 | Comma-separated allowed CORS origins.                                                                                 |
+| `CORS_ORIGINS`      | localhost:PORT | Comma-separated allowed CORS origins (compose defaults to the frontend port).                                         |
 | `PORT`              | `3000`         | Backend port.                                                                                                         |
+| `FRONTEND_PORT`     | `8080`         | Host port the frontend is published on (docker compose).                                                              |
 
 ## Docker
 
@@ -127,7 +128,7 @@ anchor feeds both the `db` container and the backend). The backend builds its
 across services. For a password with URL-reserved characters or an external
 database, set `DATABASE_URL` on the backend explicitly and it is used as-is.
 
-- Frontend: http://localhost:8080
+- Frontend: http://localhost:8080 (change with `FRONTEND_PORT`)
 - Backend: http://localhost:3000/api
 
 ## CI / CD

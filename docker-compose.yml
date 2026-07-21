@@ -40,7 +40,7 @@ services:
       SCAN_DAYS: ${SCAN_DAYS:-7}
       MEDIA_EXTENSIONS: ${MEDIA_EXTENSIONS:-}
       CLEANUP_CRON: ${CLEANUP_CRON:-0 4 * * *}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:${FRONTEND_PORT:-8080}}
       PORT: 3000
     volumes:
       # Mount the media library read/write so the scanner can inspect and,
@@ -58,7 +58,7 @@ services:
     depends_on:
       - backend
     ports:
-      - '8080:80'
+      - '${FRONTEND_PORT:-8080}:80'
 
 volumes:
   cleanarr-db:

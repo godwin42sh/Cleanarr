@@ -53,7 +53,7 @@ services:
       SCAN_DIRS: /mnt/tank/media/Shows/.downloads,/mnt/tank/media/Movies/.downloads,/mnt/tank/media/Music/.downloads # CHANGE ME
       SCAN_DAYS: '7'
       CLEANUP_CRON: '0 4 * * *'
-      CORS_ORIGINS: http://localhost:8080
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-8080}
       PORT: '3000'
     volumes:
       # Mount the media dataset read/write so the scanner can inspect files and
@@ -68,4 +68,4 @@ services:
     depends_on:
       - backend
     ports:
-      - '8080:80'
+      - '${FRONTEND_PORT:-8080}:80' # CHANGE ME if 8080 is taken on the NAS

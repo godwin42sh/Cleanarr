@@ -6,6 +6,8 @@
 # (or run it with `docker compose` on the host).
 #
 # BEFORE INSTALLING, edit the values marked "CHANGE ME":
+#   - the Postgres password (ONE place: the anchor below — it is shared by both
+#     the db and backend containers)
 #   - the two host dataset paths under volumes
 #   - the qBittorrent URL/credentials
 #   - SCAN_DIRS (must match the media path as mounted INTO the backend below)
@@ -13,14 +15,19 @@
 # Tip: mount your media dataset at the SAME path inside the container as on the
 # host, so SCAN_DIRS and the qBittorrent content paths line up exactly.
 
+# Single source of truth for the database credentials. Shared by the db
+# container and the backend, which derives its DATABASE_URL from them — so the
+# password is written exactly once.
+x-postgres-env: &postgres-env
+  POSTGRES_USER: cleanarr
+  POSTGRES_PASSWORD: cleanarr # CHANGE ME — the only place the password lives
+  POSTGRES_DB: cleanarr
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: cleanarr
-      POSTGRES_PASSWORD: cleanarr # CHANGE ME
-      POSTGRES_DB: cleanarr
+    environment: *postgres-env
     volumes:
       - /mnt/tank/apps/cleanarr/postgres:/var/lib/postgresql/data # CHANGE ME (host dataset)
     healthcheck:
@@ -36,7 +43,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://cleanarr:cleanarr@db:5432/cleanarr?schema=public # match POSTGRES_PASSWORD
+      # Same credentials as the db service; DATABASE_URL is built from these.
+      <<: *postgres-env
+      POSTGRES_HOST: db
       QB_URL: http://192.168.1.10:8080 # CHANGE ME
       QB_USERNAME: admin # CHANGE ME
       QB_PASSWORD: adminadmin # CHANGE ME

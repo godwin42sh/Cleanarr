@@ -23,7 +23,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/deploy/node_modules ./node_modules
 COPY --from=builder /app/packages/backend/dist ./dist
 COPY --from=builder /app/packages/backend/prisma ./prisma
+COPY packages/backend/docker-entrypoint.sh ./docker-entrypoint.sh
 
 EXPOSE 3000
-# Apply pending migrations, then start the API.
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/main.js"]
+# Derive DATABASE_URL (if unset), apply migrations, then start the API.
+CMD ["sh", "./docker-entrypoint.sh"]

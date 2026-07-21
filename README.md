@@ -94,18 +94,21 @@ The backend also has an e2e suite: `pnpm --filter @cleanarr/backend test:e2e`.
 
 All configuration is via environment variables — see [`.env.example`](.env.example).
 
-| Variable           | Default        | Description                                          |
-| ------------------ | -------------- | ---------------------------------------------------- |
-| `DATABASE_URL`     | —              | PostgreSQL connection string (Prisma).               |
-| `QB_URL`           | —              | qBittorrent WebUI base URL.                          |
-| `QB_USERNAME`      | —              | qBittorrent username.                                |
-| `QB_PASSWORD`      | —              | qBittorrent password.                                |
-| `SCAN_DIRS`        | —              | Comma-separated download directories to scan.        |
-| `SCAN_DAYS`        | `7`            | Minimum file age (days) to be eligible for cleaning. |
-| `MEDIA_EXTENSIONS` | built-in list  | Comma-separated media extensions (no dot).           |
-| `CLEANUP_CRON`     | `0 4 * * *`    | Cron expression for the periodic scan-only job.      |
-| `CORS_ORIGINS`     | localhost:5173 | Comma-separated allowed CORS origins.                |
-| `PORT`             | `3000`         | Backend port.                                        |
+| Variable            | Default        | Description                                                                                                           |
+| ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_USER`     | `cleanarr`     | Postgres user (docker compose; shared with backend).                                                                  |
+| `POSTGRES_PASSWORD` | `cleanarr`     | Postgres password — the single source of truth.                                                                       |
+| `POSTGRES_DB`       | `cleanarr`     | Postgres database name.                                                                                               |
+| `DATABASE_URL`      | derived        | Prisma connection string. In compose it is derived from `POSTGRES_*`; set it directly for host dev or an external DB. |
+| `QB_URL`            | —              | qBittorrent WebUI base URL.                                                                                           |
+| `QB_USERNAME`       | —              | qBittorrent username.                                                                                                 |
+| `QB_PASSWORD`       | —              | qBittorrent password.                                                                                                 |
+| `SCAN_DIRS`         | —              | Comma-separated download directories to scan.                                                                         |
+| `SCAN_DAYS`         | `7`            | Minimum file age (days) to be eligible for cleaning.                                                                  |
+| `MEDIA_EXTENSIONS`  | built-in list  | Comma-separated media extensions (no dot).                                                                            |
+| `CLEANUP_CRON`      | `0 4 * * *`    | Cron expression for the periodic scan-only job.                                                                       |
+| `CORS_ORIGINS`      | localhost:5173 | Comma-separated allowed CORS origins.                                                                                 |
+| `PORT`              | `3000`         | Backend port.                                                                                                         |
 
 ## Docker
 
@@ -117,6 +120,12 @@ docker compose up -d --build
 Compose starts three services — **PostgreSQL**, the backend, and the frontend.
 The backend waits for the database to be healthy, applies Prisma migrations on
 startup (`migrate deploy`), then serves the API.
+
+The database password is set **once** via `POSTGRES_PASSWORD` (a shared YAML
+anchor feeds both the `db` container and the backend). The backend builds its
+`DATABASE_URL` from `POSTGRES_*` at startup, so the password is never duplicated
+across services. For a password with URL-reserved characters or an external
+database, set `DATABASE_URL` on the backend explicitly and it is used as-is.
 
 - Frontend: http://localhost:8080
 - Backend: http://localhost:3000/api

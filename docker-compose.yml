@@ -1,11 +1,16 @@
+# Postgres credentials — the single source of truth, shared by both the db
+# container and the backend (which derives DATABASE_URL from them). Override
+# via the environment or a .env file next to this compose file.
+x-postgres-env: &postgres-env
+  POSTGRES_USER: ${POSTGRES_USER:-cleanarr}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cleanarr}
+  POSTGRES_DB: ${POSTGRES_DB:-cleanarr}
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-cleanarr}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cleanarr}
-      POSTGRES_DB: ${POSTGRES_DB:-cleanarr}
+    environment: *postgres-env
     volumes:
       - cleanarr-db:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +29,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-cleanarr}:${POSTGRES_PASSWORD:-cleanarr}@db:5432/${POSTGRES_DB:-cleanarr}?schema=public
+      # Same Postgres credentials as the db service; the backend entrypoint
+      # builds DATABASE_URL from these (host = the db service below).
+      <<: *postgres-env
+      POSTGRES_HOST: db
       QB_URL: ${QB_URL}
       QB_USERNAME: ${QB_USERNAME}
       QB_PASSWORD: ${QB_PASSWORD}

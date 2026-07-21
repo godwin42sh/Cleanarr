@@ -73,13 +73,13 @@ describe('App', () => {
     expect(await screen.findByText(/Cleaned 1 item/)).toBeInTheDocument();
   });
 
-  it('triggers a fresh scan when Rescan is clicked', async () => {
+  it('triggers a fresh scan when "Scan now" is clicked', async () => {
     const user = userEvent.setup();
     mockedApi.getUnused.mockResolvedValue([]);
     mockedApi.scan.mockResolvedValue([candidate]);
 
     renderApp();
-    await user.click(screen.getByRole('button', { name: 'Rescan' }));
+    await user.click(screen.getByRole('button', { name: /Scan now/ }));
 
     await waitFor(() => expect(mockedApi.scan).toHaveBeenCalled());
     expect(await screen.findByText('Big.Buck.Bunny')).toBeInTheDocument();

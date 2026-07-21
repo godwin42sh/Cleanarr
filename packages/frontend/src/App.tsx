@@ -13,8 +13,13 @@ export function App() {
         <h1>
           <span className="logo">🧹</span> Cleanarr
         </h1>
-        <button type="button" onClick={() => scan.mutate()} disabled={scan.isPending}>
-          {scan.isPending ? 'Scanning…' : 'Rescan'}
+        <button
+          type="button"
+          className="btn--primary"
+          onClick={() => scan.mutate()}
+          disabled={scan.isPending}
+        >
+          {scan.isPending ? 'Scanning…' : '🔍 Scan now'}
         </button>
       </header>
 

@@ -1,5 +1,8 @@
 # 🧹 Cleanarr
 
+[![CI](https://github.com/godwin42sh/Cleanarr/actions/workflows/ci.yml/badge.svg)](https://github.com/godwin42sh/Cleanarr/actions/workflows/ci.yml)
+[![Publish images](https://github.com/godwin42sh/Cleanarr/actions/workflows/publish.yml/badge.svg)](https://github.com/godwin42sh/Cleanarr/actions/workflows/publish.yml)
+
 Cleanarr scans your media download directories for **unused** files — media files
 that are old enough and no longer hardlinked anywhere in your library — matches
 them to their **qBittorrent** torrents (grouping cross-seed duplicates), stores
@@ -117,6 +120,37 @@ startup (`migrate deploy`), then serves the API.
 
 - Frontend: http://localhost:8080
 - Backend: http://localhost:3000/api
+
+## CI / CD
+
+Two GitHub Actions workflows:
+
+- **[CI](.github/workflows/ci.yml)** — on every push/PR to `main`: install,
+  `prisma generate`, format check, lint, unit + e2e tests, and build.
+- **[Publish images](.github/workflows/publish.yml)** — on push to `main` and on
+  `v*` tags: builds and pushes the backend and frontend images to the GitHub
+  Container Registry (GHCR), tagged `latest`, the branch name, the short SHA,
+  and the semver tag. No secrets required — it uses the built-in `GITHUB_TOKEN`.
+
+Published images (linux/amd64):
+
+- `ghcr.io/godwin42sh/cleanarr-backend`
+- `ghcr.io/godwin42sh/cleanarr-frontend`
+
+## Deploy on TrueNAS Scale
+
+A ready-made compose file that pulls the published GHCR images (nothing is built
+on the NAS) lives at [`deploy/truenas/docker-compose.yml`](deploy/truenas/docker-compose.yml).
+
+1. In TrueNAS Scale (Electric Eel 24.10+): **Apps → Discover Apps → Custom App →
+   Install via YAML**, and paste the file's contents (or run it with
+   `docker compose` on the host).
+2. Edit the values marked `CHANGE ME`: the two host dataset paths (Postgres data
+   and your media dataset), the qBittorrent URL/credentials, and `SCAN_DIRS`.
+3. Keep the media **host path == container path** so `SCAN_DIRS` and the
+   qBittorrent content paths line up. Then open `http://<nas-ip>:8080`.
+
+New releases: push a `v*` tag to rebuild the images, then re-pull on the NAS.
 
 ## License
 

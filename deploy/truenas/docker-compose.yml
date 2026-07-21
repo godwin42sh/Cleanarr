@@ -1,0 +1,62 @@
+# Cleanarr — TrueNAS Scale (Electric Eel 24.10+) deployment.
+#
+# Uses the prebuilt images published to GHCR by the "Publish images" workflow,
+# so nothing is built on the NAS. Paste this into:
+#   Apps → Discover Apps → Custom App → "Install via YAML"
+# (or run it with `docker compose` on the host).
+#
+# BEFORE INSTALLING, edit the values marked "CHANGE ME":
+#   - the two host dataset paths under volumes
+#   - the qBittorrent URL/credentials
+#   - SCAN_DIRS (must match the media path as mounted INTO the backend below)
+#
+# Tip: mount your media dataset at the SAME path inside the container as on the
+# host, so SCAN_DIRS and the qBittorrent content paths line up exactly.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cleanarr
+      POSTGRES_PASSWORD: cleanarr # CHANGE ME
+      POSTGRES_DB: cleanarr
+    volumes:
+      - /mnt/tank/apps/cleanarr/postgres:/var/lib/postgresql/data # CHANGE ME (host dataset)
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cleanarr -d cleanarr']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/godwin42sh/cleanarr-backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://cleanarr:cleanarr@db:5432/cleanarr?schema=public # match POSTGRES_PASSWORD
+      QB_URL: http://192.168.1.10:8080 # CHANGE ME
+      QB_USERNAME: admin # CHANGE ME
+      QB_PASSWORD: adminadmin # CHANGE ME
+      # Directories to scan, as seen INSIDE this container (see the volume below).
+      SCAN_DIRS: /mnt/tank/media/Shows/.downloads,/mnt/tank/media/Movies/.downloads,/mnt/tank/media/Music/.downloads # CHANGE ME
+      SCAN_DAYS: '7'
+      CLEANUP_CRON: '0 4 * * *'
+      CORS_ORIGINS: http://localhost:8080
+      PORT: '3000'
+    volumes:
+      # Mount the media dataset read/write so the scanner can inspect files and
+      # delete orphans. Keep host path == container path to match SCAN_DIRS.
+      - /mnt/tank/media:/mnt/tank/media # CHANGE ME (host dataset)
+    ports:
+      - '3000:3000'
+
+  frontend:
+    image: ghcr.io/godwin42sh/cleanarr-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '8080:80'

@@ -48,6 +48,16 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.btn--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #3d86e0;
+}
+
 .btn--danger {
   border-color: var(--danger);
   color: #ffd7db;

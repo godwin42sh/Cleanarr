@@ -10,10 +10,14 @@ COPY packages/backend/package.json ./packages/backend/
 RUN pnpm install --filter @cleanarr/backend... --frozen-lockfile
 
 COPY packages/backend ./packages/backend
-# Generate the Prisma client, build, and prune to production deps.
+# Generate the Prisma client (for type-checking), build, and prune to prod deps.
+# `pnpm deploy` rebuilds node_modules from the store, which drops the generated
+# Prisma client — so regenerate it inside the deployed directory afterwards.
 RUN pnpm --filter @cleanarr/backend prisma:generate && \
     pnpm --filter @cleanarr/backend build && \
-    pnpm --filter @cleanarr/backend deploy --prod /app/deploy
+    pnpm --filter @cleanarr/backend deploy --legacy --prod /app/deploy && \
+    cp -r packages/backend/prisma /app/deploy/prisma && \
+    cd /app/deploy && ./node_modules/.bin/prisma generate
 
 # ---- Runtime stage ----
 FROM node:22-alpine AS runner

@@ -90,6 +90,24 @@ The backend also has an e2e suite: `pnpm --filter @cleanarr/backend test:e2e`.
 | `POST` | `/api/files/clean`  | `{ "files": string[], "deleteFiles"? }` | Clean the given files' torrents/data (manual).          |
 | `GET`  | `/api/health`       | —                                       | Health check.                                           |
 
+The API is documented with **OpenAPI** via `@nestjs/swagger`. When the backend
+is running, interactive docs are at **`/api/docs`** (raw spec at `/api/docs-json`).
+
+### Typed client (OpenAPI → hey-api)
+
+The frontend talks to the backend through a client **generated from the OpenAPI
+spec** with [`@hey-api/openapi-ts`](https://heyapi.dev), including **runtime
+response validation** (Zod schemas generated from the same spec). To regenerate
+after changing the API:
+
+```bash
+pnpm --filter @cleanarr/backend generate:openapi   # writes packages/backend/openapi.json
+pnpm --filter @cleanarr/frontend generate:api       # regenerates packages/frontend/src/client
+```
+
+Both the spec (`openapi.json`) and the generated client (`src/client`) are
+committed, so no codegen is required to build.
+
 ## Configuration
 
 All configuration is via environment variables — see [`.env.example`](.env.example).

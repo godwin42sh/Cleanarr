@@ -3,3 +3,7 @@ dist
 build
 coverage
 pnpm-lock.yaml
+
+# Generated hey-api client and OpenAPI spec
+packages/frontend/src/client
+packages/backend/openapi.json

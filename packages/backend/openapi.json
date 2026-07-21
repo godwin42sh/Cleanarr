@@ -1,0 +1,319 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness check.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/files/unused": {
+      "get": {
+        "operationId": "getUnusedFiles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CleanupCandidateDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the cleanup candidates stored by the most recent scan.",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/files/scan": {
+      "post": {
+        "operationId": "scanFiles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CleanupCandidateDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Trigger a fresh scan now, persist the results, and return them.",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/files/clean": {
+      "post": {
+        "operationId": "cleanFiles",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Clean the given files: remove matching torrents and delete orphans.",
+        "tags": [
+          "files"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Cleanarr API",
+    "description": "Scan for unused downloads and clean matching qBittorrent torrents.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "HealthDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ScannedFileDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path to the file."
+          },
+          "sizeBytes": {
+            "type": "number",
+            "description": "File size in bytes."
+          },
+          "ageDays": {
+            "type": "number",
+            "description": "Age in whole days, based on mtime."
+          },
+          "links": {
+            "type": "number",
+            "description": "Hardlink count. 1 = unused; > 1 = still in use."
+          }
+        },
+        "required": [
+          "path",
+          "sizeBytes",
+          "ageDays",
+          "links"
+        ]
+      },
+      "MatchedTorrentDto": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "contentPath": {
+            "type": "string",
+            "description": "Path qBittorrent reports as the torrent content root."
+          },
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hash",
+          "name",
+          "contentPath",
+          "category",
+          "tags",
+          "sizeBytes"
+        ]
+      },
+      "CleanupCandidateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier (the shared content path)."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScannedFileDto"
+            }
+          },
+          "torrents": {
+            "description": "length > 1 means cross-seed.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchedTorrentDto"
+            }
+          },
+          "crossSeed": {
+            "type": "boolean"
+          },
+          "totalSizeBytes": {
+            "type": "number"
+          },
+          "ageDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "files",
+          "torrents",
+          "crossSeed",
+          "totalSizeBytes",
+          "ageDays"
+        ]
+      },
+      "CleanRequestDto": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "Absolute paths of the unused files to clean.",
+            "example": [
+              "/mnt/Nas/Media/Movies/.downloads/Movie.2024.mkv"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deleteFiles": {
+            "type": "boolean",
+            "default": true,
+            "description": "When true (default) the downloaded data is removed from disk along with the torrent. Set to false to only remove the torrent entry."
+          }
+        },
+        "required": [
+          "files"
+        ]
+      },
+      "CleanupResultItemDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "removedTorrents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deletedFromDisk": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "removedTorrents",
+          "deletedFromDisk"
+        ]
+      },
+      "CleanupSummaryDto": {
+        "type": "object",
+        "properties": {
+          "requested": {
+            "type": "number"
+          },
+          "cleaned": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "removedTorrentHashes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupResultItemDto"
+            }
+          }
+        },
+        "required": [
+          "requested",
+          "cleaned",
+          "failed",
+          "removedTorrentHashes",
+          "items"
+        ]
+      }
+    }
+  }
+}

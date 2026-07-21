@@ -1,32 +1,20 @@
-import type { CleanupCandidate, CleanupSummary } from './types';
+import { cleanFiles, getUnusedFiles, scanFiles } from '@/client';
+import type { CleanupCandidateDto, CleanupSummaryDto } from '@/client';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Request to ${path} failed (${res.status}): ${body}`);
-  }
-  return (await res.json()) as T;
-}
-
+// Thin wrapper over the generated hey-api SDK. The SDK validates every response
+// against the Zod schemas generated from the backend's OpenAPI spec, and
+// `throwOnError` makes it throw (instead of returning an error result) so
+// React Query surfaces failures normally.
 export const api = {
-  getUnused(): Promise<CleanupCandidate[]> {
-    return request<CleanupCandidate[]>('/files/unused');
+  async getUnused(): Promise<CleanupCandidateDto[]> {
+    return (await getUnusedFiles({ throwOnError: true })).data;
   },
 
-  scan(): Promise<CleanupCandidate[]> {
-    return request<CleanupCandidate[]>('/files/scan', { method: 'POST' });
+  async scan(): Promise<CleanupCandidateDto[]> {
+    return (await scanFiles({ throwOnError: true })).data;
   },
 
-  clean(files: string[], deleteFiles = true): Promise<CleanupSummary> {
-    return request<CleanupSummary>('/files/clean', {
-      method: 'POST',
-      body: JSON.stringify({ files, deleteFiles }),
-    });
+  async clean(files: string[], deleteFiles = true): Promise<CleanupSummaryDto> {
+    return (await cleanFiles({ body: { files, deleteFiles }, throwOnError: true })).data;
   },
 };

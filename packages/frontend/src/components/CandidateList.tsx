@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { CleanupCandidate } from '../api/types';
-import { formatSize } from '../utils/format';
+import { Trash2 } from 'lucide-react';
+import type { CleanupCandidate } from '@/api/types';
+import { formatSize } from '@/utils/format';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CandidateRow } from './CandidateRow';
 
 interface Props {
@@ -50,47 +55,48 @@ export function CandidateList({ candidates, onClean, isCleaning }: Props) {
   };
 
   if (candidates.length === 0) {
-    return <p className="empty">Nothing to clean — every download is still linked. 🎉</p>;
+    return (
+      <Card className="items-center justify-center py-16 text-center">
+        <p className="text-4xl">🎉</p>
+        <p className="text-muted-foreground">Nothing to clean — every download is still linked.</p>
+      </Card>
+    );
   }
 
   return (
-    <div className="candidate-list">
-      <div className="toolbar">
-        <span className="toolbar__info">
+    <Card className="gap-0 overflow-hidden py-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+        <span className="text-muted-foreground text-sm">
           {selected.size} of {candidates.length} selected
           {reclaimable > 0 && ` · ${formatSize(reclaimable)} reclaimable`}
         </span>
-        <div className="toolbar__actions">
-          <button
-            type="button"
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={cleanSelected}
             disabled={isCleaning || selected.size === 0}
           >
-            Clean selected
-          </button>
-          <button type="button" className="btn--danger" onClick={cleanAll} disabled={isCleaning}>
-            {isCleaning ? 'Cleaning…' : 'Clean all'}
-          </button>
+            <Trash2 /> Clean selected
+          </Button>
+          <Button variant="destructive" size="sm" onClick={cleanAll} disabled={isCleaning}>
+            <Trash2 /> {isCleaning ? 'Cleaning…' : 'Clean all'}
+          </Button>
         </div>
       </div>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th className="cell--check">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAll}
-                aria-label="Select all"
-              />
-            </th>
-            <th>Torrent / file</th>
-            <th className="cell--num">Size</th>
-            <th className="cell--num">Age</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10">
+              <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
+            </TableHead>
+            <TableHead>Torrent / file</TableHead>
+            <TableHead className="text-right">Size</TableHead>
+            <TableHead className="text-right">Age</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {candidates.map((candidate) => (
             <CandidateRow
               key={candidate.id}
@@ -99,8 +105,8 @@ export function CandidateList({ candidates, onClean, isCleaning }: Props) {
               onToggle={toggle}
             />
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </Card>
   );
 }

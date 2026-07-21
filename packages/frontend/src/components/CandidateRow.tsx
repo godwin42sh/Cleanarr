@@ -1,5 +1,8 @@
-import type { CleanupCandidate } from '../api/types';
-import { formatAge, formatSize } from '../utils/format';
+import type { CleanupCandidate } from '@/api/types';
+import { formatAge, formatSize } from '@/utils/format';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TableCell, TableRow } from '@/components/ui/table';
 
 interface Props {
   candidate: CleanupCandidate;
@@ -12,37 +15,42 @@ export function CandidateRow({ candidate, selected, onToggle }: Props) {
   const title = primary?.name ?? candidate.files[0]?.path ?? candidate.id;
 
   return (
-    <tr className={selected ? 'row row--selected' : 'row'}>
-      <td className="cell cell--check">
-        <input
-          type="checkbox"
+    <TableRow data-state={selected ? 'selected' : undefined}>
+      <TableCell>
+        <Checkbox
           checked={selected}
-          onChange={() => onToggle(candidate.id)}
+          onCheckedChange={() => onToggle(candidate.id)}
           aria-label={`Select ${title}`}
         />
-      </td>
-      <td className="cell cell--name">
-        <span className="name" title={candidate.id}>
-          {title}
-        </span>
-        <span className="badges">
-          {candidate.crossSeed && (
-            <span className="badge badge--crossseed" title="Matched by multiple torrents">
-              cross-seed ×{candidate.torrents.length}
-            </span>
-          )}
-          {candidate.torrents.length === 0 && (
-            <span className="badge badge--orphan" title="No matching torrent — deleted from disk">
-              orphan
-            </span>
-          )}
-          {candidate.files.length > 1 && (
-            <span className="badge">{candidate.files.length} files</span>
-          )}
-        </span>
-      </td>
-      <td className="cell cell--num">{formatSize(candidate.totalSizeBytes)}</td>
-      <td className="cell cell--num">{formatAge(candidate.ageDays)}</td>
-    </tr>
+      </TableCell>
+      <TableCell className="max-w-0 whitespace-normal">
+        <div className="flex flex-col gap-1.5">
+          <span className="font-medium break-all" title={candidate.id}>
+            {title}
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {candidate.crossSeed && (
+              <Badge variant="secondary" title="Matched by multiple torrents">
+                cross-seed ×{candidate.torrents.length}
+              </Badge>
+            )}
+            {candidate.torrents.length === 0 && (
+              <Badge variant="destructive" title="No matching torrent — deleted from disk">
+                orphan
+              </Badge>
+            )}
+            {candidate.files.length > 1 && (
+              <Badge variant="outline">{candidate.files.length} files</Badge>
+            )}
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="text-muted-foreground text-right tabular-nums">
+        {formatSize(candidate.totalSizeBytes)}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-right tabular-nums">
+        {formatAge(candidate.ageDays)}
+      </TableCell>
+    </TableRow>
   );
 }

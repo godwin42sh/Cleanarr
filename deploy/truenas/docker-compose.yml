@@ -62,8 +62,8 @@ services:
       # Mount the media dataset read/write so the scanner can inspect files and
       # delete orphans. Keep host path == container path to match SCAN_DIRS.
       - /mnt/tank/media:/mnt/tank/media # CHANGE ME (host dataset)
-    ports:
-      - '3000:3000'
+    # No host port for the backend: the frontend reaches it over the internal
+    # Docker network (backend:3000). Only the frontend port below is exposed.
 
   frontend:
     image: ghcr.io/godwin42sh/cleanarr-frontend:latest

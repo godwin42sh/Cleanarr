@@ -1,0 +1,144 @@
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.app__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.app__header h1 {
+  font-size: 1.6rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo {
+  font-size: 1.4rem;
+}
+
+.status {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.status--error {
+  border-color: var(--danger);
+  color: #ffd7db;
+}
+
+.status--success {
+  border-color: var(--success);
+  color: #cdeede;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 3rem 1rem;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.toolbar__info {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.toolbar__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  background: var(--surface-2);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.row--selected {
+  background: rgba(79, 156, 249, 0.08);
+}
+
+.cell--check {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.cell--num {
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.cell--name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.name {
+  word-break: break-all;
+}
+
+.badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.badge--crossseed {
+  border-color: var(--accent);
+  color: #cfe4ff;
+}
+
+.badge--orphan {
+  border-color: var(--danger);
+  color: #ffd7db;
+}

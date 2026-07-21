@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+    image: cleanarr-backend
+    restart: unless-stopped
+    environment:
+      QB_URL: ${QB_URL}
+      QB_USERNAME: ${QB_USERNAME}
+      QB_PASSWORD: ${QB_PASSWORD}
+      SCAN_DIRS: ${SCAN_DIRS}
+      SCAN_DAYS: ${SCAN_DAYS:-7}
+      MEDIA_EXTENSIONS: ${MEDIA_EXTENSIONS:-}
+      CLEANUP_CRON: ${CLEANUP_CRON:-0 4 * * *}
+      CLEANUP_AUTO: ${CLEANUP_AUTO:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      PORT: 3000
+    volumes:
+      # Mount the media library read/write so the scanner can inspect and,
+      # when cleaning orphans, delete files. Adjust to match your host paths.
+      - ${MEDIA_ROOT:-/mnt/Nas/Media}:${MEDIA_ROOT:-/mnt/Nas/Media}
+    ports:
+      - '3000:3000'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+    image: cleanarr-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '8080:80'

@@ -1,6 +1,6 @@
 import { sep } from 'path';
 import type { QbTorrentInfo } from '../qbittorrent/qbittorrent.types';
-import type { CleanupCandidate, MatchedTorrent, UnusedFile } from './cleanup.types';
+import type { CleanupCandidate, MatchedTorrent, ScannedFile } from './cleanup.types';
 
 /** True when `file` lives at, or underneath, the torrent's content path. */
 export const fileBelongsToTorrent = (filePath: string, contentPath: string): boolean => {
@@ -24,20 +24,35 @@ const toMatchedTorrent = (t: QbTorrentInfo): MatchedTorrent => ({
   sizeBytes: t.size,
 });
 
+/** A file is reclaimable when nothing links to it and it is old enough. */
+const isReclaimable = (file: ScannedFile, days: number): boolean =>
+  file.links === 1 && file.ageDays >= days;
+
 /**
- * Correlate unused files with qBittorrent torrents, grouping files and
- * torrents that resolve to the same content. Cross-seeded torrents (several
- * torrents pointing at the same content path) are collapsed into a single
- * candidate whose `torrents` array holds every duplicate.
+ * True only when a torrent's content is entirely reclaimable: every one of its
+ * media files must be unlinked (nothing imported into the library) and old
+ * enough. A single still-in-use file (or a recently-modified one) disqualifies
+ * the whole torrent — this is what keeps "sample" files from flagging a torrent
+ * whose real content is still in use.
+ */
+const isTorrentReclaimable = (files: ScannedFile[], days: number): boolean =>
+  files.length > 0 && files.every((f) => isReclaimable(f, days));
+
+/**
+ * Correlate scanned files with qBittorrent torrents and return the torrents
+ * whose content is entirely unused (no file still hardlinked into the library).
+ * Cross-seeded torrents (several torrents pointing at the same content path) are
+ * collapsed into a single candidate whose `torrents` array holds every duplicate.
  *
- * Files that match no torrent become standalone (orphan) candidates so they
- * can still be cleaned directly from disk.
+ * Unused files that match no torrent become standalone (orphan) candidates so
+ * they can still be cleaned directly from disk.
  */
 export const matchCandidates = (
-  files: UnusedFile[],
+  files: ScannedFile[],
   torrents: QbTorrentInfo[],
+  days: number,
 ): CleanupCandidate[] => {
-  const groups = new Map<string, { files: Map<string, UnusedFile>; torrents: QbTorrentInfo[] }>();
+  const groups = new Map<string, { files: Map<string, ScannedFile>; torrents: QbTorrentInfo[] }>();
   const matchedFiles = new Set<string>();
 
   for (const torrent of torrents) {
@@ -53,6 +68,8 @@ export const matchCandidates = (
       groups.set(contentPath, group);
     }
     group.torrents.push(torrent);
+    // Mark every owned file as matched (used or not) so an in-use file never
+    // leaks out as an orphan candidate.
     for (const file of owned) {
       group.files.set(file.path, file);
       matchedFiles.add(file.path);
@@ -63,12 +80,14 @@ export const matchCandidates = (
 
   for (const [id, group] of groups) {
     const groupFiles = [...group.files.values()];
+    if (!isTorrentReclaimable(groupFiles, days)) continue;
     candidates.push(buildCandidate(id, groupFiles, group.torrents.map(toMatchedTorrent)));
   }
 
-  // Orphans: unused files not referenced by any torrent.
+  // Orphans: reclaimable files not referenced by any torrent.
   for (const file of files) {
     if (matchedFiles.has(file.path)) continue;
+    if (!isReclaimable(file, days)) continue;
     candidates.push(buildCandidate(file.path, [file], []));
   }
 
@@ -77,7 +96,7 @@ export const matchCandidates = (
 
 const buildCandidate = (
   id: string,
-  files: UnusedFile[],
+  files: ScannedFile[],
   torrents: MatchedTorrent[],
 ): CleanupCandidate => ({
   id,

@@ -37,45 +37,34 @@ const daysAgo = (days: number): number => NOW - days * 86_400_000;
 describe('ScannerService', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('reports old, unlinked media files', async () => {
+  it('reports a media file with its size, age and link count', async () => {
     mockedReaddir.mockResolvedValueOnce([dirent('movie.mkv', false)]);
-    mockedStat.mockResolvedValueOnce({
-      size: 500,
-      nlink: 1,
-      mtimeMs: daysAgo(10),
-    } as import('fs').Stats);
+    mockedStat.mockResolvedValueOnce({ size: 500, nlink: 1, mtimeMs: daysAgo(10) });
 
-    const result = await makeService().scan(NOW);
-
-    expect(result).toEqual([
+    expect(await makeService().scan(NOW)).toEqual([
       { path: '/downloads/movie.mkv', sizeBytes: 500, ageDays: 10, links: 1 },
     ]);
   });
 
-  it('skips files that still have hardlinks', async () => {
+  it('reports in-use (hardlinked) files too, so the matcher can see them', async () => {
     mockedReaddir.mockResolvedValueOnce([dirent('movie.mkv', false)]);
-    mockedStat.mockResolvedValueOnce({
-      size: 500,
-      nlink: 2,
-      mtimeMs: daysAgo(10),
-    } as import('fs').Stats);
+    mockedStat.mockResolvedValueOnce({ size: 500, nlink: 2, mtimeMs: daysAgo(10) });
 
-    expect(await makeService().scan(NOW)).toEqual([]);
+    const [file] = await makeService().scan(NOW);
+    expect(file.links).toBe(2);
   });
 
-  it('skips files younger than the threshold', async () => {
+  it('reports recent files too (age filtering is the matcher’s job)', async () => {
     mockedReaddir.mockResolvedValueOnce([dirent('movie.mkv', false)]);
-    mockedStat.mockResolvedValueOnce({
-      size: 500,
-      nlink: 1,
-      mtimeMs: daysAgo(3),
-    } as import('fs').Stats);
+    mockedStat.mockResolvedValueOnce({ size: 500, nlink: 1, mtimeMs: daysAgo(1) });
 
-    expect(await makeService().scan(NOW)).toEqual([]);
+    const [file] = await makeService().scan(NOW);
+    expect(file.ageDays).toBe(1);
   });
 
   it('ignores non-media extensions', async () => {
     mockedReaddir.mockResolvedValueOnce([dirent('note.txt', false)]);
+
     expect(await makeService().scan(NOW)).toEqual([]);
     expect(mockedStat).not.toHaveBeenCalled();
   });
@@ -84,11 +73,7 @@ describe('ScannerService', () => {
     mockedReaddir
       .mockResolvedValueOnce([dirent('sub', true)])
       .mockResolvedValueOnce([dirent('ep.mkv', false)]);
-    mockedStat.mockResolvedValueOnce({
-      size: 100,
-      nlink: 1,
-      mtimeMs: daysAgo(30),
-    } as import('fs').Stats);
+    mockedStat.mockResolvedValueOnce({ size: 100, nlink: 1, mtimeMs: daysAgo(30) });
 
     const result = await makeService().scan(NOW);
     expect(result.map((f) => f.path)).toEqual(['/downloads/sub/ep.mkv']);

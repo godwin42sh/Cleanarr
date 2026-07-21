@@ -1,17 +1,27 @@
 /**
- * A media file on disk that is old enough and has no remaining hardlinks,
- * meaning nothing in the library references it anymore.
+ * A media file discovered on disk by the scanner. The scanner reports every
+ * media file (not just unused ones) so the matcher can tell whether a torrent
+ * is entirely reclaimable.
  */
-export interface UnusedFile {
+export interface ScannedFile {
   /** Absolute path to the file. */
   path: string;
   /** File size in bytes. */
   sizeBytes: number;
   /** Age in whole days, based on mtime. */
   ageDays: number;
-  /** Number of hardlinks (1 means unused). */
+  /**
+   * Hardlink count. `1` means nothing in the library references it (unused);
+   * `> 1` means it is still hardlinked into the library (in use).
+   */
   links: number;
 }
+
+/**
+ * A file belonging to a cleanup candidate. Candidates only ever contain fully
+ * unused files (`links === 1`), so this is the same shape as a scanned file.
+ */
+export type UnusedFile = ScannedFile;
 
 /**
  * A qBittorrent torrent that owns one or more unused files. Cross-seed

@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { CleanupService } from './cleanup.service';
 import { ScannerService } from '../scanner/scanner.service';
@@ -46,10 +47,14 @@ describe('CleanupService', () => {
       getCandidates: jest.fn(),
       recordCleanup: jest.fn().mockResolvedValue(undefined),
     };
+    const configService = {
+      getOrThrow: () => ({ dirs: [], days: 7, extensions: [] }),
+    } as unknown as ConfigService;
     service = new CleanupService(
       scanner as unknown as ScannerService,
       qb as unknown as QbittorrentService,
       store as unknown as CandidateStore,
+      configService,
     );
   });
 

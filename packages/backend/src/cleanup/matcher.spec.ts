@@ -1,8 +1,10 @@
 import { fileBelongsToTorrent, matchCandidates } from './matcher';
 import type { QbTorrentInfo } from '../qbittorrent/qbittorrent.types';
-import type { UnusedFile } from './cleanup.types';
+import type { ScannedFile } from './cleanup.types';
 
-const file = (path: string, overrides: Partial<UnusedFile> = {}): UnusedFile => ({
+const DAYS = 7;
+
+const file = (path: string, overrides: Partial<ScannedFile> = {}): ScannedFile => ({
   path,
   sizeBytes: 1000,
   ageDays: 10,
@@ -40,10 +42,11 @@ describe('fileBelongsToTorrent', () => {
 });
 
 describe('matchCandidates', () => {
-  it('matches a single file to its torrent', () => {
+  it('matches a single fully-unused file to its torrent', () => {
     const candidates = matchCandidates(
       [file('/data/a.mkv')],
       [torrent({ hash: 'h1', content_path: '/data/a.mkv' })],
+      DAYS,
     );
     expect(candidates).toHaveLength(1);
     expect(candidates[0].torrents).toHaveLength(1);
@@ -58,16 +61,18 @@ describe('matchCandidates', () => {
         torrent({ hash: 'h1', content_path: '/data/a.mkv' }),
         torrent({ hash: 'h2', content_path: '/data/a.mkv', name: 'dup' }),
       ],
+      DAYS,
     );
     expect(candidates).toHaveLength(1);
     expect(candidates[0].crossSeed).toBe(true);
     expect(candidates[0].torrents.map((t) => t.hash)).toEqual(['h1', 'h2']);
   });
 
-  it('collapses multiple files of a multi-file torrent into one candidate', () => {
+  it('collapses a fully-unused multi-file torrent into one candidate', () => {
     const candidates = matchCandidates(
       [file('/data/show/ep1.mkv'), file('/data/show/ep2.mkv', { ageDays: 20 })],
       [torrent({ hash: 'h1', content_path: '/data/show' })],
+      DAYS,
     );
     expect(candidates).toHaveLength(1);
     expect(candidates[0].files).toHaveLength(2);
@@ -75,17 +80,49 @@ describe('matchCandidates', () => {
     expect(candidates[0].totalSizeBytes).toBe(2000);
   });
 
-  it('emits orphan candidates for files with no matching torrent', () => {
-    const candidates = matchCandidates([file('/data/orphan.mkv')], []);
+  it('excludes a torrent that still has an in-use file (the "sample" case)', () => {
+    // A never-imported sample is unlinked, but the real episode is still in use.
+    const candidates = matchCandidates(
+      [
+        file('/data/show/episode.mkv', { links: 2 }), // hardlinked into the library
+        file('/data/show/sample.mkv', { links: 1 }), // never imported
+      ],
+      [torrent({ hash: 'h1', content_path: '/data/show' })],
+      DAYS,
+    );
+    expect(candidates).toHaveLength(0);
+  });
+
+  it('excludes a torrent that has a file newer than the threshold', () => {
+    const candidates = matchCandidates(
+      [file('/data/show/ep1.mkv', { ageDays: 30 }), file('/data/show/ep2.mkv', { ageDays: 2 })],
+      [torrent({ hash: 'h1', content_path: '/data/show' })],
+      DAYS,
+    );
+    expect(candidates).toHaveLength(0);
+  });
+
+  it('emits orphan candidates for unused files with no matching torrent', () => {
+    const candidates = matchCandidates([file('/data/orphan.mkv')], [], DAYS);
     expect(candidates).toHaveLength(1);
     expect(candidates[0].torrents).toHaveLength(0);
     expect(candidates[0].id).toBe('/data/orphan.mkv');
+  });
+
+  it('does not emit in-use or recent files as orphans', () => {
+    const candidates = matchCandidates(
+      [file('/data/in-use.mkv', { links: 3 }), file('/data/recent.mkv', { ageDays: 1 })],
+      [],
+      DAYS,
+    );
+    expect(candidates).toHaveLength(0);
   });
 
   it('parses comma-separated tags into an array', () => {
     const candidates = matchCandidates(
       [file('/data/a.mkv')],
       [torrent({ hash: 'h1', content_path: '/data/a.mkv', tags: 'foo, bar' })],
+      DAYS,
     );
     expect(candidates[0].torrents[0].tags).toEqual(['foo', 'bar']);
   });
@@ -94,6 +131,7 @@ describe('matchCandidates', () => {
     const candidates = matchCandidates(
       [file('/data/new.mkv', { ageDays: 8 }), file('/data/old.mkv', { ageDays: 30 })],
       [],
+      DAYS,
     );
     expect(candidates.map((c) => c.ageDays)).toEqual([30, 8]);
   });

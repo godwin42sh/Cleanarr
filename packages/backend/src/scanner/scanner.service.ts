@@ -3,14 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { extname, join } from 'path';
 import type { ScannerConfig } from '../config/configuration';
-import type { UnusedFile } from '../cleanup/cleanup.types';
+import type { ScannedFile } from '../cleanup/cleanup.types';
 
 const MS_PER_DAY = 86_400_000;
 
 /**
- * Walks the configured download directories and reports media files that are
- * both old enough and no longer hardlinked anywhere (nlink === 1), mirroring
- * the behaviour of the original shell script.
+ * Walks the configured download directories and reports every media file with
+ * its hardlink count and age. Reporting all files (not just unlinked ones) lets
+ * the matcher decide whether a torrent's content is entirely reclaimable — a
+ * torrent must not be flagged just because one file (e.g. a never-imported
+ * "sample") happens to be unlinked while the rest is still in use.
  */
 @Injectable()
 export class ScannerService {
@@ -23,15 +25,15 @@ export class ScannerService {
     this.extensions = new Set(this.config.extensions.map((ext) => ext.toLowerCase()));
   }
 
-  /** Scan every configured directory and return all unused files found. */
-  async scan(now: number = Date.now()): Promise<UnusedFile[]> {
-    const results: UnusedFile[] = [];
+  /** Scan every configured directory and return all media files found. */
+  async scan(now: number = Date.now()): Promise<ScannedFile[]> {
+    const results: ScannedFile[] = [];
     for (const dir of this.config.dirs) {
       this.logger.debug(`Scanning ${dir}`);
       await this.walk(dir, now, results);
     }
     this.logger.log(
-      `Found ${results.length} unused file(s) across ${this.config.dirs.length} dir(s).`,
+      `Found ${results.length} media file(s) across ${this.config.dirs.length} dir(s).`,
     );
     return results;
   }
@@ -41,7 +43,7 @@ export class ScannerService {
     return ext.length > 0 && this.extensions.has(ext);
   }
 
-  private async walk(dir: string, now: number, results: UnusedFile[]): Promise<void> {
+  private async walk(dir: string, now: number, results: ScannedFile[]): Promise<void> {
     let entries: import('fs').Dirent[];
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
@@ -64,14 +66,10 @@ export class ScannerService {
 
       try {
         const stat = await fs.stat(fullPath);
-        const ageDays = Math.floor((now - stat.mtimeMs) / MS_PER_DAY);
-        if (ageDays < this.config.days) continue;
-        if (stat.nlink !== 1) continue;
-
         results.push({
           path: fullPath,
           sizeBytes: stat.size,
-          ageDays,
+          ageDays: Math.floor((now - stat.mtimeMs) / MS_PER_DAY),
           links: stat.nlink,
         });
       } catch (err) {

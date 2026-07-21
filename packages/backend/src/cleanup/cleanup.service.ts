@@ -1,20 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { ScannerService } from '../scanner/scanner.service';
 import { QbittorrentService } from '../qbittorrent/qbittorrent.service';
 import { CandidateStore, type ScanTrigger } from './candidate.store';
 import { fileBelongsToTorrent, matchCandidates } from './matcher';
+import type { ScannerConfig } from '../config/configuration';
 import type { CleanupCandidate, CleanupResultItem, CleanupSummary } from './cleanup.types';
 
 @Injectable()
 export class CleanupService {
   private readonly logger = new Logger(CleanupService.name);
+  private readonly days: number;
 
   constructor(
     private readonly scanner: ScannerService,
     private readonly qbittorrent: QbittorrentService,
     private readonly store: CandidateStore,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.days = configService.getOrThrow<ScannerConfig>('scanner').days;
+  }
 
   /**
    * Run a live scan: walk the download directories, correlate the unused files
@@ -28,7 +34,7 @@ export class CleanupService {
         this.scanner.scan(),
         this.qbittorrent.getTorrents(),
       ]);
-      const candidates = matchCandidates(files, torrents);
+      const candidates = matchCandidates(files, torrents, this.days);
       await this.store.completeScanRun(runId, candidates);
       this.logger.log(`Scan (${trigger}) stored ${candidates.length} candidate(s).`);
       return candidates;

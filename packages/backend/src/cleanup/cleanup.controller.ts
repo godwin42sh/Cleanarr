@@ -9,17 +9,26 @@ export class CleanupController {
 
   /**
    * GET /files/unused
-   * Return the current list of cleanup candidates (unused, unlinked files
-   * matched to their qBittorrent torrents).
+   * Return the candidates stored by the most recent scan (cron or manual).
    */
   @Get('unused')
   getUnused(): Promise<CleanupCandidate[]> {
-    return this.cleanup.getCandidates();
+    return this.cleanup.getStoredCandidates();
+  }
+
+  /**
+   * POST /files/scan
+   * Trigger a fresh scan now, persist the results, and return them.
+   */
+  @Post('scan')
+  @HttpCode(HttpStatus.OK)
+  scan(): Promise<CleanupCandidate[]> {
+    return this.cleanup.scanAndStore('MANUAL');
   }
 
   /**
    * POST /files/clean
-   * Clean the provided list of files by removing the matching torrents from
+   * Manually clean the provided files by removing the matching torrents from
    * qBittorrent and deleting orphaned files from disk.
    */
   @Post('clean')

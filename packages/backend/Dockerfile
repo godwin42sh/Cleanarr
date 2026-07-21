@@ -10,7 +10,9 @@ COPY packages/backend/package.json ./packages/backend/
 RUN pnpm install --filter @cleanarr/backend... --frozen-lockfile
 
 COPY packages/backend ./packages/backend
-RUN pnpm --filter @cleanarr/backend build && \
+# Generate the Prisma client, build, and prune to production deps.
+RUN pnpm --filter @cleanarr/backend prisma:generate && \
+    pnpm --filter @cleanarr/backend build && \
     pnpm --filter @cleanarr/backend deploy --prod /app/deploy
 
 # ---- Runtime stage ----
@@ -20,6 +22,8 @@ ENV NODE_ENV=production
 
 COPY --from=builder /app/deploy/node_modules ./node_modules
 COPY --from=builder /app/packages/backend/dist ./dist
+COPY --from=builder /app/packages/backend/prisma ./prisma
 
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+# Apply pending migrations, then start the API.
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/main.js"]

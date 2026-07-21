@@ -2,8 +2,10 @@
 
 Cleanarr scans your media download directories for **unused** files — media files
 that are old enough and no longer hardlinked anywhere in your library — matches
-them to their **qBittorrent** torrents (grouping cross-seed duplicates), and lets
-you clean them from a simple web UI or automatically on a schedule.
+them to their **qBittorrent** torrents (grouping cross-seed duplicates), stores
+the candidates in PostgreSQL, and lets you review and manually clean them from a
+simple web UI. A scheduled cron keeps the candidate list fresh; cleaning is
+always a deliberate, manual action.
 
 It is the productionised successor to a small shell script that listed media
 files older than N days with a hardlink count of 1.
@@ -16,17 +18,23 @@ files older than N days with a hardlink count of 1.
 2. **Link** — query the qBittorrent WebUI API and match each unused file to the
    torrent(s) whose content path owns it. Several torrents on the same content
    are surfaced together as a **cross-seed** group.
-3. **Clean** — remove the matched torrents from qBittorrent (with their data by
-   default). Files that match no torrent are deleted directly from disk.
+3. **Store** — persist the resulting candidates (with their files, torrents, and
+   an audit trail of scan runs) to PostgreSQL via Prisma.
+4. **Clean** — _always manual_. From the UI or API you select candidates to
+   clean; the matched torrents are removed from qBittorrent (with their data by
+   default) and files matching no torrent are deleted directly from disk. Every
+   cleanup is recorded as an auditable event.
 
-A NestJS cron runs the scan periodically and can optionally auto-clean.
+A NestJS cron runs the scan periodically and **only scans and stores** — it
+never cleans. Cleaning is triggered manually.
 
 ## Monorepo layout
 
 ```
 Cleanarr/
 ├── packages/
-│   ├── backend/    NestJS + TypeScript API (scanner, qBittorrent client, cron)
+│   ├── backend/    NestJS + TypeScript API (scanner, qBittorrent client, Prisma, cron)
+│   │   └── prisma/ Prisma schema + migrations
 │   └── frontend/   React + Vite + TypeScript UI
 ├── docker-compose.yml
 └── .env.example
@@ -37,12 +45,19 @@ Cleanarr/
 - Node.js >= 20
 - pnpm >= 9 (`corepack enable`)
 - A reachable qBittorrent WebUI
+- A PostgreSQL database
 
 ## Setup
 
 ```bash
 pnpm install
-cp .env.example .env   # then edit values
+cp .env.example .env   # then edit values (DATABASE_URL, qBittorrent, scan dirs)
+
+# Generate the Prisma client and apply the schema to your database:
+pnpm --filter @cleanarr/backend prisma:generate
+pnpm --filter @cleanarr/backend prisma:migrate      # production: migrate deploy
+# For local dev against a fresh DB you can instead use:
+# pnpm --filter @cleanarr/backend prisma:migrate:dev
 ```
 
 ## Development
@@ -65,11 +80,12 @@ The backend also has an e2e suite: `pnpm --filter @cleanarr/backend test:e2e`.
 
 ## API
 
-| Method | Path                | Body                                    | Description                                   |
-| ------ | ------------------- | --------------------------------------- | --------------------------------------------- |
-| `GET`  | `/api/files/unused` | —                                       | List cleanup candidates (grouped cross-seed). |
-| `POST` | `/api/files/clean`  | `{ "files": string[], "deleteFiles"? }` | Clean the given files' torrents/data.         |
-| `GET`  | `/api/health`       | —                                       | Health check.                                 |
+| Method | Path                | Body                                    | Description                                             |
+| ------ | ------------------- | --------------------------------------- | ------------------------------------------------------- |
+| `GET`  | `/api/files/unused` | —                                       | List stored cleanup candidates from the last scan.      |
+| `POST` | `/api/files/scan`   | —                                       | Trigger a fresh scan now, persist, and return the list. |
+| `POST` | `/api/files/clean`  | `{ "files": string[], "deleteFiles"? }` | Clean the given files' torrents/data (manual).          |
+| `GET`  | `/api/health`       | —                                       | Health check.                                           |
 
 ## Configuration
 
@@ -77,14 +93,14 @@ All configuration is via environment variables — see [`.env.example`](.env.exa
 
 | Variable           | Default        | Description                                          |
 | ------------------ | -------------- | ---------------------------------------------------- |
+| `DATABASE_URL`     | —              | PostgreSQL connection string (Prisma).               |
 | `QB_URL`           | —              | qBittorrent WebUI base URL.                          |
 | `QB_USERNAME`      | —              | qBittorrent username.                                |
 | `QB_PASSWORD`      | —              | qBittorrent password.                                |
 | `SCAN_DIRS`        | —              | Comma-separated download directories to scan.        |
 | `SCAN_DAYS`        | `7`            | Minimum file age (days) to be eligible for cleaning. |
 | `MEDIA_EXTENSIONS` | built-in list  | Comma-separated media extensions (no dot).           |
-| `CLEANUP_CRON`     | `0 4 * * *`    | Cron expression for the periodic scan.               |
-| `CLEANUP_AUTO`     | `false`        | Auto-clean every candidate on each cron run.         |
+| `CLEANUP_CRON`     | `0 4 * * *`    | Cron expression for the periodic scan-only job.      |
 | `CORS_ORIGINS`     | localhost:5173 | Comma-separated allowed CORS origins.                |
 | `PORT`             | `3000`         | Backend port.                                        |
 
@@ -94,6 +110,10 @@ All configuration is via environment variables — see [`.env.example`](.env.exa
 cp .env.example .env   # edit, and set MEDIA_ROOT to your library root
 docker compose up -d --build
 ```
+
+Compose starts three services — **PostgreSQL**, the backend, and the frontend.
+The backend waits for the database to be healthy, applies Prisma migrations on
+startup (`migrate deploy`), then serves the API.
 
 - Frontend: http://localhost:8080
 - Backend: http://localhost:3000/api

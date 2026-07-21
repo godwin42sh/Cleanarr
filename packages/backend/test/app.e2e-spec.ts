@@ -3,14 +3,24 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { CleanupService } from '../src/cleanup/cleanup.service';
+import { PrismaService } from '../src/prisma/prisma.service';
 import type { CleanupCandidate } from '../src/cleanup/cleanup.types';
 
 describe('Cleanarr API (e2e)', () => {
   let app: INestApplication;
 
   const cleanupService = {
-    getCandidates: jest.fn<Promise<CleanupCandidate[]>, []>(),
+    getStoredCandidates: jest.fn<Promise<CleanupCandidate[]>, []>(),
+    scanAndStore: jest.fn(),
     clean: jest.fn(),
+  };
+
+  // Stub Prisma so the app boots without a live database.
+  const prismaStub = {
+    $connect: jest.fn().mockResolvedValue(undefined),
+    $disconnect: jest.fn().mockResolvedValue(undefined),
+    onModuleInit: jest.fn().mockResolvedValue(undefined),
+    onModuleDestroy: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeAll(async () => {
@@ -20,6 +30,8 @@ describe('Cleanarr API (e2e)', () => {
     })
       .overrideProvider(CleanupService)
       .useValue(cleanupService)
+      .overrideProvider(PrismaService)
+      .useValue(prismaStub)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -36,9 +48,14 @@ describe('Cleanarr API (e2e)', () => {
     return request(app.getHttpServer()).get('/api/health').expect(200).expect({ status: 'ok' });
   });
 
-  it('GET /api/files/unused returns candidates', () => {
-    cleanupService.getCandidates.mockResolvedValue([]);
+  it('GET /api/files/unused returns stored candidates', () => {
+    cleanupService.getStoredCandidates.mockResolvedValue([]);
     return request(app.getHttpServer()).get('/api/files/unused').expect(200).expect([]);
+  });
+
+  it('POST /api/files/scan triggers a manual scan', () => {
+    cleanupService.scanAndStore.mockResolvedValue([]);
+    return request(app.getHttpServer()).post('/api/files/scan').expect(200).expect([]);
   });
 
   it('POST /api/files/clean rejects an empty file list', () => {

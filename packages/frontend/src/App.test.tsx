@@ -7,7 +7,7 @@ import { api } from './api/client';
 import type { CleanupCandidate } from './api/types';
 
 vi.mock('./api/client', () => ({
-  api: { getUnused: vi.fn(), clean: vi.fn() },
+  api: { getUnused: vi.fn(), scan: vi.fn(), clean: vi.fn() },
 }));
 
 const mockedApi = vi.mocked(api);
@@ -71,5 +71,17 @@ describe('App', () => {
 
     await waitFor(() => expect(mockedApi.clean).toHaveBeenCalledWith(['/data/a.mkv']));
     expect(await screen.findByText(/Cleaned 1 item/)).toBeInTheDocument();
+  });
+
+  it('triggers a fresh scan when Rescan is clicked', async () => {
+    const user = userEvent.setup();
+    mockedApi.getUnused.mockResolvedValue([]);
+    mockedApi.scan.mockResolvedValue([candidate]);
+
+    renderApp();
+    await user.click(screen.getByRole('button', { name: 'Rescan' }));
+
+    await waitFor(() => expect(mockedApi.scan).toHaveBeenCalled());
+    expect(await screen.findByText('Big.Buck.Bunny')).toBeInTheDocument();
   });
 });

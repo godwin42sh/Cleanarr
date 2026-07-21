@@ -1,9 +1,10 @@
-import { useCandidates, useCleanMutation } from './hooks/useCandidates';
+import { useCandidates, useCleanMutation, useScanMutation } from './hooks/useCandidates';
 import { CandidateList } from './components/CandidateList';
 import './App.css';
 
 export function App() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useCandidates();
+  const { data, isLoading, isError, error } = useCandidates();
+  const scan = useScanMutation();
   const clean = useCleanMutation();
 
   return (
@@ -12,8 +13,8 @@ export function App() {
         <h1>
           <span className="logo">🧹</span> Cleanarr
         </h1>
-        <button type="button" onClick={() => void refetch()} disabled={isFetching}>
-          {isFetching ? 'Scanning…' : 'Rescan'}
+        <button type="button" onClick={() => scan.mutate()} disabled={scan.isPending}>
+          {scan.isPending ? 'Scanning…' : 'Rescan'}
         </button>
       </header>
 
@@ -24,6 +25,10 @@ export function App() {
           <p className="status status--error">
             Failed to load candidates: {(error as Error).message}
           </p>
+        )}
+
+        {scan.isError && (
+          <p className="status status--error">Scan failed: {(scan.error as Error).message}</p>
         )}
 
         {clean.isError && (

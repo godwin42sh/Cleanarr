@@ -1,11 +1,30 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cleanarr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cleanarr}
+      POSTGRES_DB: ${POSTGRES_DB:-cleanarr}
+    volumes:
+      - cleanarr-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cleanarr} -d ${POSTGRES_DB:-cleanarr}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
       dockerfile: packages/backend/Dockerfile
     image: cleanarr-backend
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cleanarr}:${POSTGRES_PASSWORD:-cleanarr}@db:5432/${POSTGRES_DB:-cleanarr}?schema=public
       QB_URL: ${QB_URL}
       QB_USERNAME: ${QB_USERNAME}
       QB_PASSWORD: ${QB_PASSWORD}
@@ -13,7 +32,6 @@ services:
       SCAN_DAYS: ${SCAN_DAYS:-7}
       MEDIA_EXTENSIONS: ${MEDIA_EXTENSIONS:-}
       CLEANUP_CRON: ${CLEANUP_CRON:-0 4 * * *}
-      CLEANUP_AUTO: ${CLEANUP_AUTO:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       PORT: 3000
     volumes:
@@ -33,3 +51,6 @@ services:
       - backend
     ports:
       - '8080:80'
+
+volumes:
+  cleanarr-db:

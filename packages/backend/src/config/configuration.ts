@@ -39,13 +39,14 @@ export interface ScannerConfig {
 }
 
 export interface CleanupConfig {
+  /** Cron expression for the periodic scan. Cleaning is always manual. */
   cron: string;
-  auto: boolean;
 }
 
 export interface AppConfig {
   port: number;
   corsOrigins: string[];
+  databaseUrl: string;
   qbittorrent: QbittorrentConfig;
   scanner: ScannerConfig;
   cleanup: CleanupConfig;
@@ -54,6 +55,9 @@ export interface AppConfig {
 export const configuration = (): AppConfig => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   corsOrigins: splitList(process.env.CORS_ORIGINS, ['http://localhost:5173']),
+  databaseUrl:
+    process.env.DATABASE_URL ??
+    'postgresql://cleanarr:cleanarr@localhost:5432/cleanarr?schema=public',
   qbittorrent: {
     url: (process.env.QB_URL ?? 'http://localhost:8080').replace(/\/+$/, ''),
     username: process.env.QB_USERNAME ?? 'admin',
@@ -66,6 +70,5 @@ export const configuration = (): AppConfig => ({
   },
   cleanup: {
     cron: process.env.CLEANUP_CRON ?? '0 4 * * *',
-    auto: (process.env.CLEANUP_AUTO ?? 'false').toLowerCase() === 'true',
   },
 });

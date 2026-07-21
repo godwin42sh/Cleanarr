@@ -1,0 +1,109 @@
+// Cleanarr persistence schema.
+// The cron scans and upserts the current cleanup candidates; cleaning is
+// always manual and recorded as a CleanupEvent for auditing.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ScanStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum ScanTrigger {
+  CRON
+  MANUAL
+}
+
+/// One execution of a scan (cron or manual), kept for auditing.
+model ScanRun {
+  id             String      @id @default(cuid())
+  trigger        ScanTrigger @default(CRON)
+  status         ScanStatus  @default(RUNNING)
+  startedAt      DateTime    @default(now())
+  finishedAt     DateTime?
+  candidateCount Int         @default(0)
+  fileCount      Int         @default(0)
+  error          String?
+
+  @@index([startedAt])
+}
+
+/// A cleanup candidate: unused files resolving to the same content, together
+/// with every torrent (cross-seed duplicates included) that references them.
+/// The id is the shared content path. Upserted on every scan.
+model Candidate {
+  id             String   @id
+  crossSeed      Boolean  @default(false)
+  totalSizeBytes BigInt
+  ageDays        Int
+  firstSeenAt    DateTime @default(now())
+  lastSeenAt     DateTime @updatedAt
+
+  files    CandidateFile[]
+  torrents CandidateTorrent[]
+}
+
+model CandidateFile {
+  id          String @id @default(cuid())
+  candidateId String
+  path        String @unique
+  sizeBytes   BigInt
+  ageDays     Int
+  links       Int
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+model CandidateTorrent {
+  id          String   @id @default(cuid())
+  candidateId String
+  hash        String
+  name        String
+  contentPath String
+  category    String   @default("")
+  tags        String[] @default([])
+  sizeBytes   BigInt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([candidateId, hash])
+  @@index([candidateId])
+}
+
+/// The result of one manual clean operation.
+model CleanupEvent {
+  id                   String   @id @default(cuid())
+  createdAt            DateTime @default(now())
+  requested            Int
+  cleaned              Int
+  failed               Int
+  removedTorrentHashes String[] @default([])
+
+  items CleanupItem[]
+
+  @@index([createdAt])
+}
+
+model CleanupItem {
+  id              String   @id @default(cuid())
+  eventId         String
+  path            String
+  removedTorrents String[] @default([])
+  deletedFromDisk Boolean  @default(false)
+  error           String?
+
+  event CleanupEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}

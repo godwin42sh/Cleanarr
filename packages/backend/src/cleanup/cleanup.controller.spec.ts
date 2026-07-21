@@ -6,7 +6,8 @@ import type { CleanupCandidate, CleanupSummary } from './cleanup.types';
 describe('CleanupController', () => {
   let controller: CleanupController;
   const service = {
-    getCandidates: jest.fn(),
+    getStoredCandidates: jest.fn(),
+    scanAndStore: jest.fn(),
     clean: jest.fn(),
   };
 
@@ -19,10 +20,17 @@ describe('CleanupController', () => {
     controller = moduleRef.get(CleanupController);
   });
 
-  it('GET /files/unused returns candidates', async () => {
+  it('GET /files/unused returns stored candidates', async () => {
     const candidates: CleanupCandidate[] = [];
-    service.getCandidates.mockResolvedValue(candidates);
+    service.getStoredCandidates.mockResolvedValue(candidates);
     expect(await controller.getUnused()).toBe(candidates);
+  });
+
+  it('POST /files/scan triggers a manual scan', async () => {
+    const candidates: CleanupCandidate[] = [];
+    service.scanAndStore.mockResolvedValue(candidates);
+    expect(await controller.scan()).toBe(candidates);
+    expect(service.scanAndStore).toHaveBeenCalledWith('MANUAL');
   });
 
   it('POST /files/clean forwards files and defaults deleteFiles to true', async () => {

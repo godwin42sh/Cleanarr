@@ -19,6 +19,10 @@ export const api = {
     return request<CleanupCandidate[]>('/files/unused');
   },
 
+  scan(): Promise<CleanupCandidate[]> {
+    return request<CleanupCandidate[]>('/files/scan', { method: 'POST' });
+  },
+
   clean(files: string[], deleteFiles = true): Promise<CleanupSummary> {
     return request<CleanupSummary>('/files/clean', {
       method: 'POST',

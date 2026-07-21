@@ -43,6 +43,7 @@ services:
 
   backend:
     image: ghcr.io/godwin42sh/cleanarr-backend:latest
+    pull_policy: always # re-pull :latest on every deploy
     restart: unless-stopped
     depends_on:
       db:
@@ -69,6 +70,7 @@ services:
 
   frontend:
     image: ghcr.io/godwin42sh/cleanarr-frontend:latest
+    pull_policy: always # re-pull :latest on every deploy
     restart: unless-stopped
     depends_on:
       - backend
